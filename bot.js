@@ -42,7 +42,6 @@ async function fetchNews() {
   const item = feed.items[0]
   console.log('Fetched:', item)
   return item
-  // return item
 }
 
 async function run() {
@@ -72,12 +71,10 @@ async function run() {
   }
 }
 
-// Start the bot after a short delay to allow web server to initialize
-setTimeout(() => {
-  console.log('🚀 Starting bot - first run in 30 seconds')
-  setTimeout(run, 30_000) // First run after 30 seconds
-  setInterval(run, 480 * 60_000) // Then every 8 hours
-}, 1000)
+// Start the bot - first run after 30 seconds, then every 8 hours
+console.log('🚀 Bot initialized - first run in 30 seconds')
+setTimeout(run, 30_000)
+setInterval(run, 480 * 60_000)
 
 // Helpers
 function truncateTo(input, max) {

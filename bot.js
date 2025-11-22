@@ -19,11 +19,19 @@ const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null
 
+const pickNewsAPIKey = () => {
+  const items = (process.env.PICKNEWS_API_KEY || '').split(',').map(s => s.trim()).filter(Boolean)
+  const picked = items[Math.floor(Math.random() * items.length)]
+  console.log('Picked News API Key:', picked)
+  return picked
+}
+
 async function fetchNews() {
-  const feed = await parser.parseURL('https://news.google.com/rss/search?q=crypto&hl=en-US&gl=US&ceid=US:en')
+  const feed = await parser.parseURL(pickNewsAPIKey())
   const item = feed.items[0]
-  // console.log('Fetched:', item)
+  console.log('Fetched:', item)
   return item
+  // return item
 }
 
 async function run() {
@@ -48,7 +56,7 @@ async function run() {
 }
 
 run()
-setInterval(run, 85 * 60_000)
+setInterval(run, 480 * 60_000)
 
 // Helpers
 function truncateTo(input, max) {

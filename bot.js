@@ -2,6 +2,12 @@ import 'dotenv/config'
 import Parser from 'rss-parser'
 import { TwitterApi } from 'twitter-api-v2'
 import OpenAI from 'openai'
+import http from 'http'
+
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' })
+  res.end('Twitter bot alive')
+}).listen(process.env.PORT || 10000)
 
 const parser = new Parser()
 

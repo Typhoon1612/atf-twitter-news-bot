@@ -3,6 +3,10 @@ import Parser from 'rss-parser'
 import { TwitterApi } from 'twitter-api-v2'
 import OpenAI from 'openai'
 import http from 'http'
+import { readFileSync } from 'fs'
+
+// Read JSON file
+const myData = JSON.parse(readFileSync('./myData.json', 'utf8'))
 
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' })
@@ -19,6 +23,7 @@ const client = new TwitterApi({
 })
 
 let lastPosted = ''
+let lastStartWord = 0
 
 // Optional OpenAI client (used to rephrase headlines)
 const openai = process.env.OPENAI_API_KEY
@@ -26,9 +31,17 @@ const openai = process.env.OPENAI_API_KEY
   : null
 
 const pickNewsAPIKey = () => {
-  const items = (process.env.PICKNEWS_API_KEY || '').split(',').map(s => s.trim()).filter(Boolean)
+  const items = myData.newsAPIKeys
   const picked = items[Math.floor(Math.random() * items.length)]
   console.log('Picked News API Key:', picked)
+  return picked
+}
+
+const pickStartWord = () => {
+  const items = myData.startWord
+  const picked = items[lastStartWord]
+  lastStartWord = (lastStartWord + 1) % items.length
+  console.log('Picked Start Word:', picked)
   return picked
 }
 
@@ -63,7 +76,7 @@ async function run() {
 
 run()
 // Post tweets every 8 hours (480 minutes)
-setInterval(run, 480 * 60_000)
+setInterval(run, 60_000)
 
 // Keep Render awake: ping self every 14 minutes (only for Web Service)
 if (process.env.RENDER_EXTERNAL_URL) {
@@ -86,7 +99,7 @@ function truncateTo(input, max) {
 }
 
 async function craftTweet(title) {
-  const prefix = 'Check that out: '
+  const prefix = pickStartWord()
   const base = `${prefix}${title}`
 
   // If no OpenAI key, just return base within 280 chars

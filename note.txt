@@ -1,0 +1,2 @@
+"https://news.google.com/rss/search?q=crypto&hl=en-US&gl=US&ceid=US:en"
+"https://cointelegraph.com/rss"

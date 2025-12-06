@@ -59,7 +59,7 @@ async function run() {
     if (!news) return
 
     // Clean source suffix like " - Yahoo Finance"
-    const title = (news.title || '').split(' - ')[0]
+    const title = (news.content || '').split(' - ')[0]
 
     // Skip if same as last posted (based on cleaned title)
     if (title === lastPosted) return
@@ -112,7 +112,7 @@ async function craftTweet(title) {
       model: 'gpt-4o-mini',
       temperature: 0.7,
       messages: [
-        { role: 'system', content: 'You rephrase news headlines for X/Twitter. Keep the meaning, be concise, no emojis, no hashtags, no quotes, no links. Return only the rewritten headline, <= 240 characters.' },
+        { role: 'system', content: 'You rephrase news headlines for X/Twitter. Keep the meaning, be concise, no emojis, no hashtags, no quotes, no links. Return only the rewritten headline, <= 150 characters.' },
         { role: 'user', content: `Rephrase this headline for a tweet: ${title}` }
       ]
     })

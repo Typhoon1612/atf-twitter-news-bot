@@ -1,127 +1,138 @@
-import 'dotenv/config'
-import Parser from 'rss-parser'
-import { TwitterApi } from 'twitter-api-v2'
-import OpenAI from 'openai'
-import http from 'http'
-import { readFileSync } from 'fs'
+import "dotenv/config";
+import Parser from "rss-parser";
+import { TwitterApi } from "twitter-api-v2";
+import OpenAI from "openai";
+import http from "http";
+import { readFileSync } from "fs";
 
 // Read JSON file
-const myData = JSON.parse(readFileSync('./myData.json', 'utf8'))
+const myData = JSON.parse(readFileSync("./myData.json", "utf8"));
 
-http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' })
-  res.end('Twitter bot alive')
-}).listen(process.env.PORT || 10000)
+http
+  .createServer((req, res) => {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("Twitter bot alive");
+  })
+  .listen(process.env.PORT || 10000);
 
-const parser = new Parser()
+const parser = new Parser();
 
 const client = new TwitterApi({
   appKey: process.env.API_KEY,
   appSecret: process.env.API_SECRET,
   accessToken: process.env.ACCESS_TOKEN,
-  accessSecret: process.env.ACCESS_SECRET
-})
+  accessSecret: process.env.ACCESS_SECRET,
+});
 
-let lastPosted = ''
-let lastStartWord = 0
+let lastPosted = "";
+let lastStartWord = 0;
 
 // Optional OpenAI client (used to rephrase headlines)
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null
+  : null;
 
 const pickNewsAPIKey = () => {
-  const items = myData.newsAPIKeys
-  const picked = items[Math.floor(Math.random() * items.length)]
-  console.log('Picked News API Key:', picked)
-  return picked
-}
+  const items = myData.newsAPIKeys;
+  const picked = items[Math.floor(Math.random() * items.length)];
+  console.log("Picked News API Key:", picked);
+  return picked;
+};
 
 const pickStartWord = () => {
-  const items = myData.startWord
-  const picked = items[lastStartWord]
-  lastStartWord = (lastStartWord + 1) % items.length
-  console.log('Picked Start Word:', picked)
-  return picked
-}
+  const items = myData.startWord;
+  const picked = items[lastStartWord];
+  lastStartWord = (lastStartWord + 1) % items.length;
+  console.log("Picked Start Word:", picked);
+  return picked;
+};
 
 async function fetchNews() {
-  const feed = await parser.parseURL(pickNewsAPIKey())
-  const item = feed.items[0]
-  console.log('Fetched:', item)
-  return item
+  const feed = await parser.parseURL(pickNewsAPIKey());
+  const item = feed.items[0];
+  console.log("Fetched:", item);
+  return item;
   // return item
 }
 
 async function run() {
   try {
-    const news = await fetchNews()
-    if (!news) return
+    const news = await fetchNews();
+    if (!news) return;
 
     // Clean source suffix like " - Yahoo Finance"
-    const title = (news.content || '').split(' - ')[0]
+    const title = (news.content || "").split(" - ")[0];
 
     // Skip if same as last posted (based on cleaned title)
-    if (title === lastPosted) return
+    if (title === lastPosted) return;
 
-    const post = await craftTweet(title)
-    await client.v2.tweet(post)
+    const post = await craftTweet(title);
+    await client.v2.tweet(post);
 
-    lastPosted = title
-    console.log('Posted:', post)
+    lastPosted = title;
+    console.log("Posted:", post);
   } catch (e) {
-    console.log('Error:', e)
+    console.log("Error:", e);
   }
 }
 
-run()
+run();
 // Post tweets every 8 hours (480 minutes)
-setInterval(run, 1440 * 60_000)
+setInterval(run, 1440 * 60_000);
 
 // Keep Render awake: ping self every 14 minutes (only for Web Service)
 if (process.env.RENDER_EXTERNAL_URL) {
-  console.log('Keep-alive enabled. URL:', process.env.RENDER_EXTERNAL_URL)
+  console.log("Keep-alive enabled. URL:", process.env.RENDER_EXTERNAL_URL);
   setInterval(() => {
-    const now = new Date().toISOString()
+    const now = new Date().toISOString();
     fetch(process.env.RENDER_EXTERNAL_URL)
-      .then(res => console.log(`[${now}] Keep-alive ping: ${res.status}`))
-      .catch(err => console.log(`[${now}] Keep-alive error:`, err.message))
-  }, 14 * 60_000) // 14 minutes
-  console.log('Keep-alive timer started (every 14 min)')
+      .then((res) => console.log(`[${now}] Keep-alive ping: ${res.status}`))
+      .catch((err) => console.log(`[${now}] Keep-alive error:`, err.message));
+  }, 14 * 60_000); // 14 minutes
+  console.log("Keep-alive timer started (every 14 min)");
 } else {
-  console.log('Keep-alive disabled (no RENDER_EXTERNAL_URL)')
+  console.log("Keep-alive disabled (no RENDER_EXTERNAL_URL)");
 }
 
 // Helpers
 function truncateTo(input, max) {
-  if (input.length <= max) return input
-  return input.slice(0, max - 1) + '…'
+  if (input.length <= max) return input;
+  return input.slice(0, max - 1) + "…";
 }
 
 async function craftTweet(title) {
-  const prefix = pickStartWord()
-  const base = `${prefix}${title}`
+  const prefix = pickStartWord();
+  const base = `${prefix}${title}`;
 
   // If no OpenAI key, just return base within 280 chars
-  if (!openai) return truncateTo(base, 280)
+  if (!openai) return truncateTo(base, 280);
 
   try {
     // Ask the model to paraphrase while keeping meaning and under limit
-    const maxBody = 280 // We'll enforce after generation too
+    const maxBody = 280; // We'll enforce after generation too
     const res = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: "gpt-4o-mini",
       temperature: 0.7,
       messages: [
-        { role: 'system', content: 'You rephrase news headlines for X/Twitter. Keep the meaning, be concise, no emojis, no hashtags, no quotes, no links. Return only the rewritten headline, <= 150 characters.' },
-        { role: 'user', content: `Rephrase this headline for a tweet: ${title}` }
-      ]
-    })
+        {
+          role: "system",
+          content:
+            "You rephrase news headlines for X/Twitter. Keep the meaning, be concise, no emojis, no hashtags, no quotes, no links. Return only the rewritten headline, <= 150 characters.",
+        },
+        {
+          role: "user",
+          content: `Rephrase this headline for a tweet: ${title}`,
+        },
+      ],
+    });
 
-    const rewritten = (res.choices?.[0]?.message?.content || title).trim()
-    return truncateTo(`${prefix}${rewritten}`, maxBody)
-  } catch (_) {
+    const rewritten = (res.choices?.[0]?.message?.content || title).trim();
+    return truncateTo(`${prefix}${rewritten}`, maxBody);
+  } catch (e) {
+    // Log the OpenAI error so we can debug
+    console.log("OpenAI rephrasing error:", e.message || e);
     // Fallback: small variation to avoid duplicate rejection
-    const time = new Date().toISOString().slice(11, 19) // HH:MM:SS
-    return truncateTo(`${prefix}${title} · ${time}`, 280)
+    const time = new Date().toISOString().slice(11, 19); // HH:MM:SS
+    return truncateTo(`${prefix}${title} · ${time}`, 280);
   }
 }

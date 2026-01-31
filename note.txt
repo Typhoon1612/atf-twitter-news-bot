@@ -1,2 +1,4 @@
 "https://news.google.com/rss/search?q=crypto&hl=en-US&gl=US&ceid=US:en"
 "https://cointelegraph.com/rss"
+
+Bearer Token: AAAAAAAAAAAAAAAAAAAAAMo37QEAAAAAA5GIjn2s1wyt1lI%2F410F%2BPViGYY%3DJixgoK6uMZxUOQg6VAgIJpKyO46eJNoww4IzHOxNhE1jLAR7fC
